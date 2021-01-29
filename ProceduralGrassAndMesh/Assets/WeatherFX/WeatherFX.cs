@@ -1,7 +1,9 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
 
 [ExecuteInEditMode]
@@ -77,6 +79,7 @@ public class WeatherFX : MonoBehaviour
         Shader.SetGlobalFloat(_shader_WorldLightCloudIntensity, worldMaskHightIntensity);
     }
 
+    #if UNITY_EDITOR
     private void OnDrawGizmosSelected()
     {
         Vector3 wind = new Vector3(windDirection.x, windDirection.y, windDirection.z);
@@ -89,4 +92,5 @@ public class WeatherFX : MonoBehaviour
         
         Handles.Label(transform.position, "Wind Direction");
     }
+    #endif
 }

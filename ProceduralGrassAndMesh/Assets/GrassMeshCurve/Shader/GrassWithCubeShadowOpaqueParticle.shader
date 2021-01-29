@@ -11,6 +11,7 @@ Shader "Unlit/GrassWithCubeShadowOpaqueParticle"
         _GroundColorIntensity("Ground Color Intensity", Float) = 1
         _ParticleColorIntensity("Particle Color Intensity", Float) = 1
         _FixedObjectColor("Fixed Object Color", Color) = (0,0,0,0)
+        _OverrideWindSpeed("Override Wind Speed", Float) = 0 
         
         //PlayerMask
         [Toggle]_PlayerMask("Use Player Influence", Int) = 0
@@ -41,7 +42,7 @@ Shader "Unlit/GrassWithCubeShadowOpaqueParticle"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-
+            #pragma multi_compile_instancing
             #include "UnityCG.cginc"
 
             struct appdata
@@ -51,6 +52,7 @@ Shader "Unlit/GrassWithCubeShadowOpaqueParticle"
                 float4 color : COLOR;
                 float3 normal : NORMAL;
                 float4 tangetID : TANGENT;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
             struct v2f
@@ -102,6 +104,7 @@ Shader "Unlit/GrassWithCubeShadowOpaqueParticle"
             
             //Others
             half _PlayerMask;
+            half _OverrideWindSpeed;
             
             float4 TextureProjection(float4 v)
             {
@@ -117,6 +120,8 @@ Shader "Unlit/GrassWithCubeShadowOpaqueParticle"
             v2f vert (appdata v)
             {
                 v2f o;
+                
+                UNITY_SETUP_INSTANCE_ID(v);
                 
                 //Cloud Influence
                 float4 cacheVertex = mul(unity_ObjectToWorld, v.vertex);
@@ -159,7 +164,7 @@ Shader "Unlit/GrassWithCubeShadowOpaqueParticle"
                     windDirection = windDirection * sinWind;
                     windDirection = vertexColorGround * windDirection;
                     windDirection = windDirection * _WindForce;
-                    windDirection *= cloudInfluence;
+                    windDirection *= max(0.5,cloudInfluence);
                     v.vertex.xyz = v.vertex.xyz + (vertexColorGround * windDirection);
                     
                     //Apply Player Mask
@@ -196,6 +201,7 @@ Shader "Unlit/GrassWithCubeShadowOpaqueParticle"
                     v.vertex.y += 1;
                     //Offset
                     half r = vertexColorOffset * 4 -4;
+                    _WindSpeed += _OverrideWindSpeed;
                     half downForce = frac((_Time.y + r) * _WindSpeed);
                     half windDistance  = frac((_Time.y + r) * 1) * _WindSpeed;
                      windDistance *= _WindForce * 2; // force
@@ -234,7 +240,11 @@ Shader "Unlit/GrassWithCubeShadowOpaqueParticle"
                 //Floor or Particle
                 half3 particleColor = lerp((i.colorVariation.rgb *  i.colorVariation.a) * pow(2.0, _ParticleColorIntensity), (i.colorVariation.rgb *  i.colorVariation.a),  max(0,i.type-1));
                 half3 currentColor = lerp(colorTop,  particleColor, saturate(i.type));
-                //Particle or Fixed
+
+                //Fall Particles 2
+                currentColor = lerp(currentColor, (i.colorVariation.rgb), floor(clamp(0, 2, i.type) * 0.5));
+  
+                //Particle or Fixed 3
                 currentColor = lerp(currentColor, (baseMap * _FixedObjectColor), max(0,i.type-2));
 
                 half3 colH = max(currentColor, currentColor * _WorldLightCloudIntensity);
